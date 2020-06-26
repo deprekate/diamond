@@ -28,32 +28,43 @@ using namespace std;
 
 unique_ptr<Output_format> output_format;
 
-void Output_format::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc)
+void Output_format::print_title(TextBuffer &buf, const char *defline, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc)
 {
-	if (!all_titles) {
-		print_escaped_until(buf, id, full_titles ? "\1" : Const::id_delimiters, esc);
-		return;
-	}
-	if (strchr(id, '\1') == 0) {
-		print_escaped_until(buf, id, full_titles ? "\1" : Const::id_delimiters, esc);
-		return;
-	}
-	const vector<string> t(tokenize(id, "\1"));
+	string id, def;
+	// There are two characters that can delimit records in a multi-header defline: ^A and > 
+	const vector<string> t(tokenize(defline, "\1>"));
 	vector<string>::const_iterator i = t.begin();
-	for (; i < t.end() - 1; ++i) {
+	
+	get_title_def(*i, id, def);
+	if (full_titles){
+		def.erase(def.find_last_not_of(" ")+1);
+		if(def.empty()){
+			buf << "N/A";
+		}else{
+			print_escaped(buf, def, esc);
+		}
+	}else{
+		print_escaped(buf, id, esc);
+	}
+	if (!all_titles)
+		return;
+	i++;
+	for (; i < t.end(); ++i) {
+		get_title_def(*i, id, def);
 		if (full_titles) {
-			print_escaped(buf, *i, esc);
 			buf << separator;
+			def.erase(def.find_last_not_of(" ")+1);
+			if(def.empty()){
+				buf << "N/A";
+			}else{
+				print_escaped(buf, def, esc);
+			}
 		}
 		else {
-			print_escaped_until(buf, i->c_str(), Const::id_delimiters, esc);
 			buf << ";";
+			print_escaped(buf, id, esc);
 		}
 	}
-	if (full_titles)
-		print_escaped(buf, *i, esc);
-	else
-		print_escaped_until(buf, i->c_str(), Const::id_delimiters, esc);
 }
 
 void print_hsp(Hsp &hsp, const TranslatedSequence &query)
